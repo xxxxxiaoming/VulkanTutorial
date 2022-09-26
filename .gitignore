@@ -6,3 +6,8 @@
 /VulkanTest/x64/Debug
 /x64/Debug
 /VulkanTest.sln
+/Debug
+/VulkanTest/Debug
+/VulkanTest/VulkanTest.vcxproj
+/VulkanTest/VulkanTest.vcxproj.filters
+/VulkanTest/VulkanTest.vcxproj.user
