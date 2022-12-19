@@ -36,6 +36,8 @@ void TriangleApplication::initVkn()
 {
 	createInstance();
 	setupDebugMessenger();
+	pickPhysicalDevice();
+	createLogicalDevice();
 }
 
 void TriangleApplication::initWindow()
@@ -95,6 +97,49 @@ void TriangleApplication::createInstance()
 	}
 }
 
+void TriangleApplication::createLogicalDevice()
+{
+	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+	VkDeviceQueueCreateInfo queueCreateInfo{};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.queueFamilyIndex = indices.graphicFamliy.value();
+	queueCreateInfo.queueCount = 1;	// for now we just need one queue
+
+	/*
+	* Vulkan lets you assign priorities to queues to influence the sceduling of
+	* command buffer excution using floatging point numbers between [0, 1]. 
+	*/
+	float queuePriority = 1.0f;
+	queueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkPhysicalDeviceFeatures deviceFeatures{};
+	VkDeviceCreateInfo createInfo{};
+
+	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.pQueueCreateInfos = &queueCreateInfo;
+	createInfo.queueCreateInfoCount = 1;
+	createInfo.pEnabledFeatures = &deviceFeatures;
+	createInfo.enabledExtensionCount = 0;	// We won't need any device speicfic extentions for now.
+
+	if (enableLayerValidation)
+	{
+		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+		createInfo.ppEnabledLayerNames = validationLayers.data();
+	}
+	else
+	{
+		createInfo.enabledLayerCount = 0;
+	}
+
+	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice) != VK_SUCCESS)
+	{
+		throw std::runtime_error("failed to create a logical device.");
+	}
+
+	vkGetDeviceQueue(logicalDevice, indices.graphicFamliy.value(), 0, &graphicQueue);
+}
+
 VkResult TriangleApplication::createDebugMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {
 	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -121,6 +166,51 @@ void TriangleApplication::setupDebugMessenger()
 	{
 		throw std::runtime_error("failed to set up debug messenger.");
 	}
+	else
+	{ }
+}
+
+void TriangleApplication::pickPhysicalDevice()
+{
+	uint32_t deviciesCount;
+	vkEnumeratePhysicalDevices(instance, &deviciesCount, nullptr);
+
+	if (deviciesCount == 0)
+	{
+		throw std::runtime_error("failed to find devicies");
+	}
+
+	std::vector<VkPhysicalDevice> devicies(deviciesCount);
+	vkEnumeratePhysicalDevices(instance, &deviciesCount, devicies.data());
+	std::cout << "find " << deviciesCount << " physical devicies." << std::endl;
+
+	for(VkPhysicalDevice device : devicies)
+	{
+		if (isDeviceSuitable(device))
+		{
+			physicalDevice = device;
+			break;
+		}
+	}
+
+	if (physicalDevice == VK_NULL_HANDLE)
+	{
+		throw std::runtime_error("falied to find a suitable physical device.");
+	}
+}
+
+bool TriangleApplication::isDeviceSuitable(VkPhysicalDevice& device)
+{
+	/*VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+	bool result = deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;*/
+	
+	QueueFamilyIndices indices = findQueueFamilies(device);
+	return indices.graphicFamliy.has_value();
 }
 
 bool TriangleApplication::checkValidationLayerSupport()
@@ -159,6 +249,28 @@ bool TriangleApplication::checkValidationLayerSupport()
 	{
 		return false;
 	}
+}
+
+QueueFamilyIndices TriangleApplication::findQueueFamilies(VkPhysicalDevice& device)
+{
+	QueueFamilyIndices indices;
+	
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	for (int i = 0; i < queueFamilies.size(); i++)
+	{
+		const auto& queueFamily = queueFamilies[i];
+		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		{
+			indices.graphicFamliy = i;
+		}
+	}
+
+	return indices;
 }
 
 void TriangleApplication::generateDebugMessengerCreateInfoEXT(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
@@ -201,6 +313,8 @@ void TriangleApplication::destroyDebugUtilsMessengerEXT(VkInstance instance, VkD
 
 void TriangleApplication::cleanUp()
 {
+	vkDestroyDevice(logicalDevice, nullptr);
+
 	if (enableLayerValidation)
 	{
 		destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
