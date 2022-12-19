@@ -7,6 +7,24 @@
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
+
+struct QueueFamilyIndices {
+	std::optional<uint32_t> graphicFamliy;
+};
+/*
+* struct QueueFamilyIndices can be extended like this when it has more than one member
+* 
+* struct QueueFamilyIndices {
+*	std:optional<unit32_t> graphicFamlily;
+*	std:optional<unin32_t> transferFamily;
+* 
+*	bool isComplete()
+*	{
+*		return graphicFamily.has_value() and transferFamily.has_value();
+*	}
+* 
+*/
 
 class TriangleApplication
 {
@@ -37,6 +55,9 @@ private:
 
 	GLFWwindow* window   = nullptr;
 	VkInstance  instance = nullptr;
+	VkDevice	logicalDevice;
+	VkQueue		graphicQueue;	// handle to interface with the queue
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 #ifdef NDEBUG
@@ -55,12 +76,18 @@ private:
 	// Create Vulkan Instance
 	void createInstance();
 
+	// Create Logical Device
+	void createLogicalDevice();
+
 	// Createa Vulkan Debug Messenger
 	VkResult createDebugMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 
 	// Tool Functions
 	void setupDebugMessenger();
+	void pickPhysicalDevice();
+	bool isDeviceSuitable(VkPhysicalDevice& device);
 	bool checkValidationLayerSupport();
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice& device);
 	void generateDebugMessengerCreateInfoEXT(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 	std::vector<const char*> getRequiredExtentions();
 
