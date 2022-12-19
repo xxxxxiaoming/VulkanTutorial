@@ -1,9 +1,11 @@
 #pragma once
+//#define NDEBUG
 #define GLFW_INCLUDE_VULKAN
 
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 #include <vector>
+#include <set>
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -11,20 +13,13 @@
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamliy;
+	std::optional<uint32_t> presentationFamily;
+
+	bool isComplete()
+	{
+		return graphicFamliy.has_value() and presentationFamily.has_value();
+	}
 };
-/*
-* struct QueueFamilyIndices can be extended like this when it has more than one member
-* 
-* struct QueueFamilyIndices {
-*	std:optional<unit32_t> graphicFamlily;
-*	std:optional<unin32_t> transferFamily;
-* 
-*	bool isComplete()
-*	{
-*		return graphicFamily.has_value() and transferFamily.has_value();
-*	}
-* 
-*/
 
 class TriangleApplication
 {
@@ -55,9 +50,11 @@ private:
 
 	GLFWwindow* window   = nullptr;
 	VkInstance  instance = nullptr;
-	VkDevice	logicalDevice;
+	VkSurfaceKHR surface;
+	VkQueue		presentationQueue; // handle to interface with the queue
 	VkQueue		graphicQueue;	// handle to interface with the queue
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	VkDevice	logicalDevice;
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 #ifdef NDEBUG
@@ -75,6 +72,9 @@ private:
 
 	// Create Vulkan Instance
 	void createInstance();
+
+	// Create Surface
+	void createSurface();
 
 	// Create Logical Device
 	void createLogicalDevice();

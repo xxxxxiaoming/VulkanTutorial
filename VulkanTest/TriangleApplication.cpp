@@ -36,6 +36,8 @@ void TriangleApplication::initVkn()
 {
 	createInstance();
 	setupDebugMessenger();
+	// The window surface needs to be create right after the instance, because it can influence the pyhsical device selection.
+	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
 }
@@ -97,28 +99,53 @@ void TriangleApplication::createInstance()
 	}
 }
 
+void TriangleApplication::createSurface()
+{
+	/*
+	* Although the VKSurfaceKHR object and its usage is platform agonistic, its creation isn't becatuse it depends on window system details.
+	* GLFW actually has glfwCreateWindowSurface that handles the platform differences for us.
+	* If you wanna know more about what it does behine the scenes, you can read this:
+	* https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Window_surface
+	*/
+	if(glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+	{
+		throw std::runtime_error("failed to create window surface!");
+	}
+}
+
 void TriangleApplication::createLogicalDevice()
 {
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphicFamliy.value();
-	queueCreateInfo.queueCount = 1;	// for now we just need one queue
+	VkDeviceQueueCreateInfo graphicsQueueCreateInfo{};
+	graphicsQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	graphicsQueueCreateInfo.queueFamilyIndex = indices.graphicFamliy.value();
+	graphicsQueueCreateInfo.queueCount = 1;
+
+
+	VkDeviceQueueCreateInfo presentationQueueCreateInfo{};
+	presentationQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	presentationQueueCreateInfo.queueFamilyIndex = indices.presentationFamily.value();
+	presentationQueueCreateInfo.queueCount = 1;
 
 	/*
 	* Vulkan lets you assign priorities to queues to influence the sceduling of
-	* command buffer excution using floatging point numbers between [0, 1]. 
+	* command buffer excution using floatging point numbers between [0, 1].
 	*/
 	float queuePriority = 1.0f;
-	queueCreateInfo.pQueuePriorities = &queuePriority;
+	graphicsQueueCreateInfo.pQueuePriorities = &queuePriority;
+	presentationQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	queueCreateInfos.push_back(graphicsQueueCreateInfo);
+	queueCreateInfos.push_back(presentationQueueCreateInfo);
 
 	VkPhysicalDeviceFeatures deviceFeatures{};
 	VkDeviceCreateInfo createInfo{};
 
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	createInfo.pQueueCreateInfos = &queueCreateInfo;
-	createInfo.queueCreateInfoCount = 1;
+	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+	createInfo.pQueueCreateInfos = queueCreateInfos.data();
 	createInfo.pEnabledFeatures = &deviceFeatures;
 	createInfo.enabledExtensionCount = 0;	// We won't need any device speicfic extentions for now.
 
@@ -138,6 +165,7 @@ void TriangleApplication::createLogicalDevice()
 	}
 
 	vkGetDeviceQueue(logicalDevice, indices.graphicFamliy.value(), 0, &graphicQueue);
+	vkGetDeviceQueue(logicalDevice, indices.presentationFamily.value(), 0, &presentationQueue);
 }
 
 VkResult TriangleApplication::createDebugMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
@@ -210,7 +238,7 @@ bool TriangleApplication::isDeviceSuitable(VkPhysicalDevice& device)
 	bool result = deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader;*/
 	
 	QueueFamilyIndices indices = findQueueFamilies(device);
-	return indices.graphicFamliy.has_value();
+	return indices.isComplete();
 }
 
 bool TriangleApplication::checkValidationLayerSupport()
@@ -268,6 +296,21 @@ QueueFamilyIndices TriangleApplication::findQueueFamilies(VkPhysicalDevice& devi
 		{
 			indices.graphicFamliy = i;
 		}
+		else 
+		{
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+			if (presentSupport)
+			{
+				indices.presentationFamily = i;
+			}
+		}
+
+
+		if (indices.isComplete())
+		{
+			break;
+		}
 	}
 
 	return indices;
@@ -320,6 +363,8 @@ void TriangleApplication::cleanUp()
 		destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 
+	// Make sure that the surface is destroyed before the instance.
+	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
 	
 	glfwDestroyWindow(window);
