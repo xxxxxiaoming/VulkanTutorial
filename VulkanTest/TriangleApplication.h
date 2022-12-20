@@ -8,8 +8,11 @@
 #include <set>
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 #include <iostream>
 #include <optional>
+#include <limits>
+#include <algorithm>
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamliy;
@@ -19,6 +22,12 @@ struct QueueFamilyIndices {
 	{
 		return graphicFamliy.has_value() and presentationFamily.has_value();
 	}
+};
+
+struct SwapChainSupportDetails {
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentMode;
 };
 
 class TriangleApplication
@@ -48,6 +57,13 @@ private:
 		"VK_LAYER_KHRONOS_validation",
 	};
 
+	const std::vector<const char*> deviceExensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	};
+
+	std::vector<VkImage> swapChainImages;
+	std::vector<VkImageView> swapchainImageViews;
+
 	GLFWwindow* window   = nullptr;
 	VkInstance  instance = nullptr;
 	VkSurfaceKHR surface;
@@ -55,6 +71,9 @@ private:
 	VkQueue		graphicQueue;	// handle to interface with the queue
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice	logicalDevice;
+	VkSwapchainKHR swapchain;
+	VkFormat swapchainFormat;
+	VkExtent2D swapchainExtent;
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 #ifdef NDEBUG
@@ -82,14 +101,26 @@ private:
 	// Createa Vulkan Debug Messenger
 	VkResult createDebugMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 
+	// Swapchain Settings
+	void createSwapChain();
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& avaliableFormats);  // choose color depth and color space
+	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avaliableModes); // choose a mode about how to present an img
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities); // resolution of images in swap chain
+
+	void createImageViews();
+
 	// Tool Functions
 	void setupDebugMessenger();
 	void pickPhysicalDevice();
 	bool isDeviceSuitable(VkPhysicalDevice& device);
 	bool checkValidationLayerSupport();
+	bool checkDeviceExtensionsSupport(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice& device);
 	void generateDebugMessengerCreateInfoEXT(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 	std::vector<const char*> getRequiredExtentions();
+	SwapChainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
+
+
 
 	// Clean up
 	void destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
