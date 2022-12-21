@@ -53,6 +53,7 @@ public:
 private:
 	const uint32_t HEIGHT = 600;
 	const uint32_t WIDTH  = 800;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation",
@@ -62,8 +63,16 @@ private:
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	};
 
+	uint32_t currentFrame = 0;
+
 	std::vector<VkImage> swapChainImages;
 	std::vector<VkImageView> swapchainImageViews;
+	std::vector<VkFramebuffer> swapchainFrameBuffers;
+	std::vector<VkCommandBuffer> commandBuffers;
+	std::vector<VkSemaphore> imageAvaliableSemaphores;
+	std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence> inFlightFences;
+
 
 	GLFWwindow* window   = nullptr;
 	VkInstance  instance = nullptr;
@@ -78,6 +87,7 @@ private:
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline pipeline;
+	VkCommandPool commandPool;
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 #ifdef NDEBUG
@@ -88,6 +98,9 @@ private:
 
 	// Loop Application
 	void mainLoop();
+
+	// Draw Frame !!!
+	void drawFrame();
 
 	// Initialization
 	void initVkn();
@@ -119,6 +132,18 @@ private:
 	void createGraphicsPipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& shader);
 
+	// Create Frambuffers
+	void createFrameBuffers();
+
+	// Create Command Pool
+	void createCommanPool();
+
+	// Allocate Command Buffer
+	void allocateCommandBuffers();
+
+	// Create Sync Objects
+	void createSyncObjects();
+
 	// Tool Functions
 	void setupDebugMessenger();
 	void pickPhysicalDevice();
@@ -130,6 +155,7 @@ private:
 	std::vector<const char*> getRequiredExtentions();
 	SwapChainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
 	static std::vector<char> readFile(const std::string& path);
+	void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 	// Clean up
 	void destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
