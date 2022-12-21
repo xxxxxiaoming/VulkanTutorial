@@ -13,6 +13,7 @@
 #include <optional>
 #include <limits>
 #include <algorithm>
+#include <fstream>
 
 struct QueueFamilyIndices {
 	std::optional<uint32_t> graphicFamliy;
@@ -74,6 +75,9 @@ private:
 	VkSwapchainKHR swapchain;
 	VkFormat swapchainFormat;
 	VkExtent2D swapchainExtent;
+	VkRenderPass renderPass;
+	VkPipelineLayout pipelineLayout;
+	VkPipeline pipeline;
 	VkDebugUtilsMessengerEXT debugMessenger;
 
 #ifdef NDEBUG
@@ -107,7 +111,13 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avaliableModes); // choose a mode about how to present an img
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities); // resolution of images in swap chain
 
+	// Createa ImageView Objects
 	void createImageViews();
+
+	// Create pipeline
+	void createRenderPass();
+	void createGraphicsPipeline();
+	VkShaderModule createShaderModule(const std::vector<char>& shader);
 
 	// Tool Functions
 	void setupDebugMessenger();
@@ -119,8 +129,7 @@ private:
 	void generateDebugMessengerCreateInfoEXT(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 	std::vector<const char*> getRequiredExtentions();
 	SwapChainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
-
-
+	static std::vector<char> readFile(const std::string& path);
 
 	// Clean up
 	void destroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
